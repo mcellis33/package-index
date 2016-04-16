@@ -1,0 +1,4 @@
+/go/bin/
+/go/pkg/
+/docker/package-index/package-index
+/docker/test-suite/test-suite
