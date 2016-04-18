@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -46,7 +45,7 @@ func (client *TCPPackageIndexerClient) Name() string {
 
 //Close closes the connection to the server.
 func (client *TCPPackageIndexerClient) Close() error {
-	log.Printf("%s disconnecting", client.Name())
+	debugf("%s disconnecting", client.Name())
 	return client.conn.Close()
 }
 
@@ -84,7 +83,7 @@ func (client *TCPPackageIndexerClient) Send(msg string) (ResponseCode, error) {
 
 // MakeTCPPackageIndexClient returns a new instance of the client
 func MakeTCPPackageIndexClient(name string, addr string) (PackageIndexerClient, error) {
-	log.Printf("%s connecting to [%s]", name, addr)
+	debugf("%s connecting to [%s]", name, addr)
 	conn, err := net.Dial("tcp", addr)
 
 	if err != nil {

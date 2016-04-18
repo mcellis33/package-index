@@ -12,41 +12,15 @@ import (
 // TestRun controls the current state of the test program.
 type TestRun struct {
 	ServerAddr       string
-	StartedAt        time.Time
 	ConcurrencyLevel int
 	Unluckiness      int
+	startedAt        time.Time
 	waiting          sync.WaitGroup
-}
-
-// Start starts the test
-func (t *TestRun) Start() {
-	log.Println("================")
-	log.Println(" Starting test ")
-	log.Println("================")
-	log.Printf("expected server addr [%s]", t.ServerAddr)
-	log.Printf("concurrency level    [%d]", t.ConcurrencyLevel)
-	log.Printf("unluckiness          [%d]", t.Unluckiness)
-	t.StartedAt = time.Now()
-	log.Println("TESTRUN Starting...")
-}
-
-// Finish ends the test
-func (t *TestRun) Finish() {
-	duration := time.Since(t.StartedAt)
-	log.Println("================")
-	log.Println("All tests passed!")
-	log.Println("================")
-	log.Printf("TESTRUN finished! (took %dms)", durationInMillis(duration))
-	os.Exit(0)
 }
 
 // Fail fails the test
 func (t *TestRun) Fail(reason string) {
-	duration := time.Since(t.StartedAt)
-	log.Println("================")
-	log.Println("  Test FAILED!  ")
-	log.Println("================")
-	log.Printf("Test failed (took %dms)\n%s", durationInMillis(duration), reason)
+	log.Printf("FAIL (took %v): %s", time.Since(t.startedAt), reason)
 	os.Exit(0)
 	os.Exit(1)
 }
@@ -61,11 +35,17 @@ func (t *TestRun) Faile(err error) {
 	t.Failf("%v", err)
 }
 
-//Run executes the test
-func (t *TestRun) Run() {
-	startedAt := time.Now()
+func debugf(format string, a ...interface{}) {
+	if *debugMode {
+		log.Printf(format, a...)
+	}
+}
 
-	log.Println("TESTRUN - Trying to remove, index, then remove again a large amount of packages")
+//Run executes the test: remove, index, then remove again a large amount of packages
+func (t *TestRun) Run() {
+	log.Printf("test start: server %s, concurrency %d, unluckiness %d", t.ServerAddr, t.ConcurrencyLevel, t.Unluckiness)
+
+	t.startedAt = time.Now()
 
 	homebrewPackages, err := BrewToPackages(&AllPackages{})
 	if err != nil {
@@ -94,8 +74,7 @@ func (t *TestRun) Run() {
 	clientCounter = clientCounter + t.ConcurrencyLevel
 	concurrentverifyAllPackages(clientCounter, t, segmentedPackages, FAIL)
 
-	duration := time.Since(startedAt)
-	log.Printf("TESTRUN - FINISHED (took %dms %v)", durationInMillis(duration), duration)
+	log.Printf("test end: took %v", time.Since(t.startedAt))
 }
 
 //MakeTestRun returns a new instance of a test run.
@@ -109,7 +88,7 @@ func MakeTestRun(serverAddr string, concurrencyLevel int, unluckiness int) *Test
 
 func bruteforceIndexesPackages(client PackageIndexerClient, packages []*Package, changeOfBeingUnluckyInPercent int) error {
 	totalPackages := len(packages)
-	log.Printf("%s brute-forcing indexing of %d packages", client.Name(), totalPackages)
+	debugf("%s brute-forcing indexing of %d packages", client.Name(), totalPackages)
 	for numPackagesInstalledThisItearion := 0; numPackagesInstalledThisItearion < totalPackages; {
 		numPackagesInstalledThisItearion = 0
 		for _, pkg := range packages {
@@ -127,7 +106,7 @@ func bruteforceIndexesPackages(client PackageIndexerClient, packages []*Package,
 			}
 
 		}
-		log.Printf("%s reports %v/%v packages indexed", client.Name(), numPackagesInstalledThisItearion, totalPackages)
+		debugf("%s reports %v/%v packages indexed", client.Name(), numPackagesInstalledThisItearion, totalPackages)
 	}
 
 	return nil
@@ -150,7 +129,7 @@ func indexPackage(client PackageIndexerClient, pkg *Package, expectedStatus Resp
 
 func bruteforceRemovesAllPackages(client PackageIndexerClient, packages []*Package, changeOfBeingUnluckyInPercent int) error {
 	totalPackages := len(packages)
-	log.Printf("%s brute-forcing removal of %d packages", client.Name(), totalPackages)
+	debugf("%s brute-forcing removal of %d packages", client.Name(), totalPackages)
 	for installedPackages := totalPackages; installedPackages > 0; {
 		installedPackages = totalPackages
 
@@ -166,14 +145,14 @@ func bruteforceRemovesAllPackages(client PackageIndexerClient, packages []*Packa
 			}
 
 		}
-		log.Printf("%s reports %d/%d packages still installed", client.Name(), installedPackages, totalPackages)
+		debugf("%s reports %d/%d packages still installed", client.Name(), installedPackages, totalPackages)
 	}
 	return nil
 }
 
 func verifyAllPackages(client PackageIndexerClient, packages []*Package, expectedResponseCode ResponseCode, changeOfBeingUnluckyInPercent int) error {
 	totalPackages := len(packages)
-	log.Printf("%s querying for %d packages and expecting status code to be [%s]", client.Name(), totalPackages, expectedResponseCode)
+	debugf("%s querying for %d packages and expecting status code to be [%s]", client.Name(), totalPackages, expectedResponseCode)
 	for _, pkg := range packages {
 		msg := MakeQueryMessage(pkg)
 		responseCode, err := client.Send(msg)
@@ -203,7 +182,7 @@ func concurrentBruteforceIndexesPackages(clientCounter int, t *TestRun, segmente
 		clientCounter++
 		go func(number int, packagesToProcess []*Package) {
 			name := fmt.Sprintf("client[%d]", number+1)
-			log.Printf("Starting %s", name)
+			debugf("Starting %s", name)
 			defer t.waiting.Done()
 
 			client := makeClient(name, t)
@@ -224,7 +203,7 @@ func concurrentBruteforceRemovesAllPackages(clientCounter int, t *TestRun, segme
 		clientCounter++
 		go func(number int, packagesToProcess []*Package) {
 			name := fmt.Sprintf("client[%d]", number+1)
-			log.Printf("Starting %s", name)
+			debugf("Starting %s", name)
 			defer t.waiting.Done()
 
 			client := makeClient(name, t)
@@ -245,7 +224,7 @@ func concurrentverifyAllPackages(clientCounter int, t *TestRun, segmentedPackage
 		clientCounter++
 		go func(number int, packagesToProcess []*Package) {
 			name := fmt.Sprintf("client[%d]", number+1)
-			log.Printf("Starting %s", name)
+			debugf("Starting %s", name)
 			defer t.waiting.Done()
 
 			client := makeClient(name, t)
