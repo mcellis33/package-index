@@ -83,13 +83,12 @@ func (client *TCPPackageIndexerClient) Send(msg string) (ResponseCode, error) {
 }
 
 // MakeTCPPackageIndexClient returns a new instance of the client
-func MakeTCPPackageIndexClient(name string, port int) (PackageIndexerClient, error) {
-	host := fmt.Sprintf("localhost:%d", port)
-	log.Printf("%s connecting to [%s]", name, host)
-	conn, err := net.Dial("tcp", host)
+func MakeTCPPackageIndexClient(name string, addr string) (PackageIndexerClient, error) {
+	log.Printf("%s connecting to [%s]", name, addr)
+	conn, err := net.Dial("tcp", addr)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open connection to [%s]: %#v", host, err)
+		return nil, fmt.Errorf("Failed to open connection to [%s]: %v", addr, err)
 	}
 
 	return &TCPPackageIndexerClient{

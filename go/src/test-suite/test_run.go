@@ -11,7 +11,7 @@ import (
 
 // TestRun controls the current state of the test program.
 type TestRun struct {
-	ServerPort       int
+	ServerAddr       string
 	StartedAt        time.Time
 	ConcurrencyLevel int
 	Unluckiness      int
@@ -23,7 +23,7 @@ func (t *TestRun) Start() {
 	log.Println("================")
 	log.Println(" Starting test ")
 	log.Println("================")
-	log.Printf("expected server port [%d]", t.ServerPort)
+	log.Printf("expected server addr [%s]", t.ServerAddr)
 	log.Printf("concurrency level    [%d]", t.ConcurrencyLevel)
 	log.Printf("unluckiness          [%d]", t.Unluckiness)
 	t.StartedAt = time.Now()
@@ -99,9 +99,9 @@ func (t *TestRun) Run() {
 }
 
 //MakeTestRun returns a new instance of a test run.
-func MakeTestRun(serverPort int, concurrencyLevel int, unluckiness int) *TestRun {
+func MakeTestRun(serverAddr string, concurrencyLevel int, unluckiness int) *TestRun {
 	return &TestRun{
-		ServerPort:       serverPort,
+		ServerAddr:       serverAddr,
 		ConcurrencyLevel: concurrencyLevel,
 		Unluckiness:      unluckiness,
 	}
@@ -190,9 +190,9 @@ func verifyAllPackages(client PackageIndexerClient, packages []*Package, expecte
 }
 
 func makeClient(clientName string, t *TestRun) PackageIndexerClient {
-	client, err := MakeTCPPackageIndexClient(clientName, t.ServerPort)
+	client, err := MakeTCPPackageIndexClient(clientName, t.ServerAddr)
 	if err != nil {
-		t.Failf("Error opening client to t.ServerPort [%d]: %v", t.ServerPort, err)
+		t.Failf("Error opening client to t.ServerAddr [%s]: %v", t.ServerAddr, err)
 	}
 	return client
 }

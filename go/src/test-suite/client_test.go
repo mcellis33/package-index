@@ -17,17 +17,16 @@ func respondWith(t *testing.T, server net.Listener, responseCode string) {
 }
 
 func TestMakeTCPPackageIndexClient(t *testing.T) {
-	portWithNobodyListeningTo := 8089
-	client, err := MakeTCPPackageIndexClient("portisntopen", portWithNobodyListeningTo)
+	client, err := MakeTCPPackageIndexClient("portisntopen", ":8089")
 
 	if err == nil {
-		t.Errorf("Expected connection to [%d] to raise error as there's no server, got %v", portWithNobodyListeningTo, client)
+		t.Errorf("Expected connection to [8089] to raise error as there's no server, got %v", client)
 	}
 }
 
 func TestSend(t *testing.T) {
-	goodPort := 8088
-	goodServer, err := net.Listen("tcp", fmt.Sprintf(":%d", goodPort))
+	goodAddr := ":8080"
+	goodServer, err := net.Listen("tcp", goodAddr)
 	defer goodServer.Close()
 
 	if err != nil {
@@ -36,7 +35,7 @@ func TestSend(t *testing.T) {
 
 	go respondWith(t, goodServer, "OK")
 
-	client, err := MakeTCPPackageIndexClient("goodPort", goodPort)
+	client, err := MakeTCPPackageIndexClient("goodAddr", goodAddr)
 	if err != nil {
 		t.Fatalf("Error connecting to server: %v", err)
 	}
@@ -51,8 +50,8 @@ func TestSend(t *testing.T) {
 		t.Errorf("Expected responseCode to be 1, got %v", responseCode)
 	}
 
-	badPort := 8090
-	badServer, err := net.Listen("tcp", fmt.Sprintf(":%d", badPort))
+	badAddr := ":8090"
+	badServer, err := net.Listen("tcp", badAddr)
 	defer badServer.Close()
 
 	if err != nil {
@@ -61,7 +60,7 @@ func TestSend(t *testing.T) {
 
 	go respondWith(t, badServer, "banana")
 
-	client, err = MakeTCPPackageIndexClient("badPort", badPort)
+	client, err = MakeTCPPackageIndexClient("badAddr", badAddr)
 	if err != nil {
 		t.Fatalf("Error connecting to server: %v", err)
 	}
